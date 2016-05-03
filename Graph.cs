@@ -14,15 +14,16 @@ namespace MemGraph
         private Rect windowPos = new Rect(80, 80, 400, 50);
         private bool showUI = false;
 
-        public double[] values = new double[GraphWidth];
+        public long[] values = new long[GraphWidth];
         public Texture2D texGraph;
 
         int valIndex = 0;
         int lastRendered = 0;
 
-        public double lastValue;
-        public String lastValueStr;
+        public long lastValue;
+        //public String lastValueStr;
 
+        int lastColCount = 0;
         long lastAlloc = 0;
 
         long totalAlloc = 0;
@@ -34,7 +35,7 @@ namespace MemGraph
 
         bool fullUpdate = false;
 
-        const String lastValuePattern = "Last: {0}%";
+        //const String lastValuePattern = "Last: {0}%";
 
         Color[] blackLine;
         Color[] redLine;
@@ -63,10 +64,13 @@ namespace MemGraph
             }
 
             for (int j = 0; j < GraphWidth; j++)
-                values[j] = 0.0;
+                values[j] = 0;
 
-            lastValue = 0.0;
-            lastValueStr = String.Format(lastValuePattern, lastValue.ToString("N2"));
+            lastValue = 0;
+            //lastValueStr = String.Format(lastValuePattern, lastValue.ToString("N2"));
+
+            lastColCount = GC.CollectionCount(GC.MaxGeneration);
+            lastAlloc = GC.GetTotalMemory(false);
 
             startTime = Stopwatch.GetTimestamp();
             ticksPerSec = Stopwatch.Frequency;
@@ -78,9 +82,15 @@ namespace MemGraph
 
         public void AddMemoryIncrement()
         {
+            int colCount = GC.CollectionCount(GC.MaxGeneration);
+            if (lastColCount == colCount)
+            {
+                long currentMem = GC.GetTotalMemory(false);
 
+                totalAlloc += (currentMem - lastAlloc);
 
-
+                lastAlloc = currentMem;
+            }
         }
 
         public void FixedUpdate()
@@ -93,28 +103,38 @@ namespace MemGraph
             //print("timeDelta = " + timeDelta);
             if (timeDelta > ticksPerSec)
             {
-                double frac = ((double)ticksDelta * 100.0 / (double)timeDelta);
-                //print("value = " + frac);
-                values[valIndex] = frac;
+                values[valIndex] = totalAlloc;
 
-                if (frac != lastValue)
+                if (totalAlloc != lastValue)
                 {
-                    lastValue = frac;
-                    lastValueStr = String.Format(lastValuePattern, frac.ToString("N4"));
+                    lastValue = totalAlloc;
+                    //lastValueStr = String.Format(lastValuePattern, lastValue.ToString("N4"));
                 }
 
                 startTime = endTime;
-                valIndex = (valIndex + 1) % ChannelValues.width;
+                valIndex = (valIndex + 1) % GraphWidth;
             }
         }
 
         public void Update()
         {
             //print("Update Start");
+            AddMemoryIncrement();
 
-            if (GameSettings.MODIFIER_KEY.GetKey() && Input.GetKeyDown(KeyCode.Minus))
+            if (GameSettings.MODIFIER_KEY.GetKey())
             {
-                showUI = !showUI;
+                if (Input.GetKeyDown(KeyCode.KeypadMultiply))
+                {
+                    showUI = !showUI;
+                }
+                if (Input.GetKeyDown(KeyCode.KeypadPlus))
+                {
+                    // Increase scale
+                }
+                if (Input.GetKeyDown(KeyCode.KeypadMinus))
+                {
+                    // Decrease scale
+                }
             }
 
             if (!showUI)
@@ -123,41 +143,36 @@ namespace MemGraph
             if (fullUpdate)
             {
                 fullUpdate = false;
-                lastRendered = (valIndex + 1) % ChannelValues.width;
+                lastRendered = (valIndex + 1) % GraphWidth;
             }
 
             // If we want to update this time
             if (lastRendered != valIndex)
             {
-                for (int i = 0; i < NumChannels + 1; i++)
+                // We're going to wrap this back round to the start so copy the value so 
+                int startlastRend = lastRendered;
+
+                // Update the columns from lastRendered to frameIndex
+                if (startlastRend >= valIndex)
                 {
-                    // We're going to wrap this back round to the start so copy the value so 
-                    int startlastRend = lastRendered;
-
-                    ChannelValues data = dataarray[i];
-
-                    // Update the columns from lastRendered to frameIndex
-                    if (startlastRend >= valIndex)
+                    for (int x = startlastRend; x < GraphWidth; x++)
                     {
-                        for (int x = startlastRend; x < ChannelValues.width; x++)
-                        {
-                            DrawColumn(data.texGraph, x, (int)data.values[x], redLine);
-                        }
-
-                        startlastRend = 0;
+                        DrawColumn(texGraph, x, (int)((double)values[x] * vscale), redLine);
                     }
 
-                    for (int x = startlastRend; x < valIndex; x++)
-                    {
-                        DrawColumn(data.texGraph, x, (int)data.values[x], redLine);
-                    }
-
-                    if (valIndex < ChannelValues.width)
-                        data.texGraph.SetPixels(valIndex, 0, 1, ChannelValues.height, blackLine);
-                    if (valIndex != ChannelValues.width - 2)
-                        data.texGraph.SetPixels((valIndex + 1) % ChannelValues.width, 0, 1, ChannelValues.height, blackLine);
-                    data.texGraph.Apply();
+                    startlastRend = 0;
                 }
+
+                for (int x = startlastRend; x < valIndex; x++)
+                {
+                    DrawColumn(texGraph, x, (int)((double)values[x] * vscale), redLine);
+                }
+
+                if (valIndex < GraphWidth)
+                    texGraph.SetPixels(valIndex, 0, 1, GraphHeight, blackLine);
+                if (valIndex != GraphWidth - 2)
+                    texGraph.SetPixels((valIndex + 1) % GraphWidth, 0, 1, GraphHeight, blackLine);
+                texGraph.Apply();
 
                 lastRendered = valIndex;
             }
@@ -167,11 +182,11 @@ namespace MemGraph
         private void DrawColumn(Texture2D tex, int x, int y, Color[] col)
         {
             //print("drawcol(" + x + ", " + y + ")");
-            if (y > ChannelValues.height - 1)
-                y = ChannelValues.height - 1;
+            if (y > GraphHeight - 1)
+                y = GraphHeight - 1;
             tex.SetPixels(x, 0, 1, y + 1, col);
-            if (y < ChannelValues.height - 1)
-                tex.SetPixels(x, y + 1, 1, ChannelValues.height - 1 - y, blackLine);
+            if (y < GraphHeight - 1)
+                tex.SetPixels(x, y + 1, 1, GraphHeight - 1 - y, blackLine);
         }
 
         public void OnGUI()
@@ -180,11 +195,11 @@ namespace MemGraph
                 labelStyle = new GUIStyle(GUI.skin.label);
 
             if (wndWidth == null)
-                wndWidth = GUILayout.Width(ChannelValues.width);
+                wndWidth = GUILayout.Width(GraphWidth);
             if (wndHeight == null)
-                wndHeight = GUILayout.Height(ChannelValues.height);
+                wndHeight = GUILayout.Height(GraphHeight);
             if (graphHeight == null)
-                graphHeight = GUILayout.Height(ChannelValues.height);
+                graphHeight = GUILayout.Height(GraphHeight);
 
             if (showUI)
                 windowPos = GUILayout.Window(3651275, windowPos, WindowGUI, "Profile Graph", wndWidth, wndHeight);
@@ -193,19 +208,12 @@ namespace MemGraph
         public void WindowGUI(int windowID)
         {
             GUILayout.BeginVertical();
-            for (int i = 0; i < NumChannels + 1; i++)
-            {
-                ChannelValues data = dataarray[i];
+            GUILayout.Box(texGraph, wndWidth, graphHeight);
 
-                GUILayout.BeginVertical();
-                GUILayout.Box(data.texGraph, wndWidth, graphHeight);
+            //GUILayout.BeginHorizontal();
+            //GUILayout.Label(lastValueStr, labelStyle);
+            //GUILayout.EndHorizontal();
 
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(data.lastValueStr, labelStyle);
-                GUILayout.EndHorizontal();
-
-                GUILayout.EndVertical();
-            }
             GUILayout.EndVertical();
 
             GUI.DragWindow();
