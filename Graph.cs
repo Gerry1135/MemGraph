@@ -15,25 +15,31 @@ namespace MemGraph
         private bool showUI = false;
 
         public long[] values = new long[GraphWidth];
-        public Texture2D texGraph;
+        public Texture2D texGraph = new Texture2D(GraphWidth, GraphHeight);
 
         int valIndex = 0;
         int lastRendered = 0;
 
         public long lastValue;
-        //public String lastValueStr;
 
         int lastColCount = 0;
         long lastAlloc = 0;
 
         long totalAlloc = 0;
 
-        double vscale = 1e-6;
+        double vscale;
+        public String guiStr;
 
         long startTime;
         long ticksPerSec;
 
         bool fullUpdate = false;
+
+        int scaleIndex = 4;
+
+        const int numScales = 6;
+        static double[] valCycle = { 1024, 10240, 102400, 1024 * 1024, 1024 * 1024 * 10, 1024 * 1024 * 100 };
+        static String[] valCycleStr = { "1 KB", "10 KB", "100 KB", "1 MB", "10 MB", "100 MB" };
 
         //const String lastValuePattern = "Last: {0}%";
 
@@ -41,6 +47,8 @@ namespace MemGraph
         Color[] redLine;
         Color[] greenLine;
         Color[] blueLine;
+
+        static StringBuilder strBuild = new StringBuilder(128);
 
         private GUIStyle labelStyle;
         private GUILayoutOption wndWidth;
@@ -66,8 +74,11 @@ namespace MemGraph
             for (int j = 0; j < GraphWidth; j++)
                 values[j] = 0;
 
-            lastValue = 0;
+            //lastValue = 0;
             //lastValueStr = String.Format(lastValuePattern, lastValue.ToString("N2"));
+
+            vscale = valCycle[scaleIndex];
+            UpdateGuiStr();
 
             lastColCount = GC.CollectionCount(GC.MaxGeneration);
             lastAlloc = GC.GetTotalMemory(false);
@@ -87,10 +98,29 @@ namespace MemGraph
             {
                 long currentMem = GC.GetTotalMemory(false);
 
-                totalAlloc += (currentMem - lastAlloc);
+                long diff = currentMem - lastAlloc;
+                print("diff = " + diff);
+                if (diff > 0)
+                    totalAlloc += diff;
 
                 lastAlloc = currentMem;
             }
+            else
+            {
+                //print("GC has run");
+                lastColCount = colCount;
+            }
+        }
+
+        void UpdateGuiStr()
+        {
+            strBuild.Length = 0;
+            strBuild.Append("Scale: ");
+            strBuild.Append(valCycleStr[scaleIndex]);
+            strBuild.Append("   Last: ");
+            strBuild.Append(lastValue / 1024);
+            strBuild.Append(" KB");
+            guiStr = strBuild.ToString();
         }
 
         public void FixedUpdate()
@@ -104,14 +134,16 @@ namespace MemGraph
             if (timeDelta > ticksPerSec)
             {
                 values[valIndex] = totalAlloc;
+                //print("totalAlloc = " + totalAlloc);
 
                 if (totalAlloc != lastValue)
                 {
                     lastValue = totalAlloc;
-                    //lastValueStr = String.Format(lastValuePattern, lastValue.ToString("N4"));
+                    UpdateGuiStr();
                 }
 
                 startTime = endTime;
+                totalAlloc = 0;
                 valIndex = (valIndex + 1) % GraphWidth;
             }
         }
@@ -130,10 +162,18 @@ namespace MemGraph
                 if (Input.GetKeyDown(KeyCode.KeypadPlus))
                 {
                     // Increase scale
+                    scaleIndex = (scaleIndex + 1) % numScales;
+                    vscale = valCycle[scaleIndex];
+                    UpdateGuiStr();
+                    fullUpdate = true;
                 }
                 if (Input.GetKeyDown(KeyCode.KeypadMinus))
                 {
                     // Decrease scale
+                    scaleIndex = (scaleIndex + numScales - 1) % numScales;
+                    vscale = valCycle[scaleIndex];
+                    UpdateGuiStr();
+                    fullUpdate = true;
                 }
             }
 
@@ -157,7 +197,7 @@ namespace MemGraph
                 {
                     for (int x = startlastRend; x < GraphWidth; x++)
                     {
-                        DrawColumn(texGraph, x, (int)((double)values[x] * vscale), redLine);
+                        DrawColumn(texGraph, x, (int)((double)values[x] * GraphHeight / vscale), redLine);
                     }
 
                     startlastRend = 0;
@@ -165,7 +205,7 @@ namespace MemGraph
 
                 for (int x = startlastRend; x < valIndex; x++)
                 {
-                    DrawColumn(texGraph, x, (int)((double)values[x] * vscale), redLine);
+                    DrawColumn(texGraph, x, (int)((double)values[x] * GraphHeight / vscale), redLine);
                 }
 
                 if (valIndex < GraphWidth)
@@ -208,12 +248,12 @@ namespace MemGraph
         public void WindowGUI(int windowID)
         {
             GUILayout.BeginVertical();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(guiStr, labelStyle);
+            GUILayout.EndHorizontal();
+
             GUILayout.Box(texGraph, wndWidth, graphHeight);
-
-            //GUILayout.BeginHorizontal();
-            //GUILayout.Label(lastValueStr, labelStyle);
-            //GUILayout.EndHorizontal();
-
             GUILayout.EndVertical();
 
             GUI.DragWindow();
