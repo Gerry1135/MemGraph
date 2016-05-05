@@ -17,7 +17,7 @@ namespace MemGraph
 
         long[] values = new long[GraphWidth];
         bool[] flags = new bool[GraphWidth];
-        Texture2D texGraph = new Texture2D(GraphWidth, GraphHeight);
+        Texture2D texGraph = new Texture2D(GraphWidth, GraphHeight, TextureFormat.ARGB32, false);
 
         int valIndex = 0;           // The current index into the values array
         int lastRendered = 0;       // The last index of the values array that has been rendered into the texture
