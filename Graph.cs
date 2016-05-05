@@ -13,6 +13,7 @@ namespace MemGraph
 
         Rect windowPos = new Rect(80, 80, 400, 50);
         int windowId = 0;
+        string windowTitle = "MemGraph 1.0.0.0";
         bool showUI = false;
 
         long[] values = new long[GraphWidth];
@@ -238,7 +239,7 @@ namespace MemGraph
                 graphHeight = GUILayout.Height(GraphHeight);
 
             if (showUI)
-                windowPos = GUILayout.Window(windowId, windowPos, WindowGUI, "MemGraph", wndWidth, wndHeight);
+                windowPos = GUILayout.Window(windowId, windowPos, WindowGUI, windowTitle, wndWidth, wndHeight);
         }
 
         void WindowGUI(int windowID)
