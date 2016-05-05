@@ -8,76 +8,70 @@ namespace MemGraph
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
     public class Graph : MonoBehaviour
     {
-        private const int GraphWidth = 500;
-        private const int GraphHeight = 100;
+        const int GraphWidth = 500;
+        const int GraphHeight = 200;
 
-        private Rect windowPos = new Rect(80, 80, 400, 50);
-        private bool showUI = false;
+        Rect windowPos = new Rect(80, 80, 400, 50);
+        int windowId = 0;
+        bool showUI = false;
 
-        public long[] values = new long[GraphWidth];
-        public Texture2D texGraph = new Texture2D(GraphWidth, GraphHeight);
+        long[] values = new long[GraphWidth];
+        bool[] flags = new bool[GraphWidth];
+        Texture2D texGraph = new Texture2D(GraphWidth, GraphHeight);
 
-        int valIndex = 0;
-        int lastRendered = 0;
+        int valIndex = 0;           // The current index into the values array
+        int lastRendered = 0;       // The last index of the values array that has been rendered into the texture
 
-        public long lastValue;
+        int lastColCount = 0;       // The most recent count of GC runs
+        long lastAlloc = 0;         // The most recent value of total memory
 
-        int lastColCount = 0;
-        long lastAlloc = 0;
+        long totalAlloc = 0;        // The sum of all the memory deltas (this is the value stored in the array every ~1s)
+        bool doneGC = false;        // Has a GC run (this is also stored)
 
-        long totalAlloc = 0;
+        long lastValue = 0;         // The last value stored in the array
 
-        double vscale;
-        public String guiStr;
+        string guiStr;              // The string at the top of the window (only updated when required)
 
-        long startTime;
-        long ticksPerSec;
+        long startTime;             // The timestamp totalAlloc was last stored
+        long ticksPerSec;           // The number of timestamp ticks in a second
 
-        bool fullUpdate = false;
+        bool fullUpdate = true;     // Flag to force re-render of entire texture (e.g. when changing scale)
 
-        int scaleIndex = 4;
-
-        const int numScales = 6;
+        int scaleIndex = 4;         // Index of the current vertical scale
+        const int numScales = 6;    // Number of entries in the scale array
         static double[] valCycle = { 1024, 10240, 102400, 1024 * 1024, 1024 * 1024 * 10, 1024 * 1024 * 100 };
-        static String[] valCycleStr = { "1 KB", "10 KB", "100 KB", "1 MB", "10 MB", "100 MB" };
-
-        //const String lastValuePattern = "Last: {0}%";
+        static string[] valCycleStr = { "1 KB", "10 KB", "100 KB", "1 MB", "10 MB", "100 MB" };
 
         Color[] blackLine;
         Color[] redLine;
         Color[] greenLine;
-        Color[] blueLine;
 
         static StringBuilder strBuild = new StringBuilder(128);
 
-        private GUIStyle labelStyle;
-        private GUILayoutOption wndWidth;
-        private GUILayoutOption wndHeight;
-        private GUILayoutOption graphHeight;
+        GUIStyle labelStyle;
+        GUILayoutOption wndWidth;
+        GUILayoutOption wndHeight;
+        GUILayoutOption graphHeight;
 
-        internal void Awake()
+        void Awake()
         {
             DontDestroyOnLoad(gameObject);
 
+            windowId = Guid.NewGuid().GetHashCode();
+
             redLine = new Color[GraphHeight];
             greenLine = new Color[GraphHeight];
-            blueLine = new Color[GraphHeight];
             blackLine = new Color[GraphHeight];
             for (int i = 0; i < blackLine.Length; i++)
             {
                 blackLine[i] = Color.black;
                 redLine[i] = Color.red;
                 greenLine[i] = Color.green;
-                blueLine[i] = Color.blue;
             }
 
             for (int j = 0; j < GraphWidth; j++)
                 values[j] = 0;
 
-            //lastValue = 0;
-            //lastValueStr = String.Format(lastValuePattern, lastValue.ToString("N2"));
-
-            vscale = valCycle[scaleIndex];
             UpdateGuiStr();
 
             lastColCount = GC.CollectionCount(GC.MaxGeneration);
@@ -87,28 +81,46 @@ namespace MemGraph
             ticksPerSec = Stopwatch.Frequency;
         }
 
-        internal void OnDestroy()
+        void OnDestroy()
         {
         }
 
-        public void AddMemoryIncrement()
+        void AddMemoryIncrement()
         {
+            long currentMem = GC.GetTotalMemory(false);
             int colCount = GC.CollectionCount(GC.MaxGeneration);
-            if (lastColCount == colCount)
+            if (lastColCount != colCount)
             {
-                long currentMem = GC.GetTotalMemory(false);
-
-                long diff = currentMem - lastAlloc;
-                print("diff = " + diff);
-                if (diff > 0)
-                    totalAlloc += diff;
-
-                lastAlloc = currentMem;
-            }
-            else
-            {
-                //print("GC has run");
+                doneGC = true;
                 lastColCount = colCount;
+            }
+
+            // If the GC has run then the total memory may have shrunk so only add if it increases
+            long diff = currentMem - lastAlloc;
+            if (diff > 0)
+                totalAlloc += diff;
+
+            // Remember the current memory for next time
+            lastAlloc = currentMem;
+
+            // If at least 1 second has passed then record and reset
+            long endTime = Stopwatch.GetTimestamp();
+            long timeDelta = endTime - startTime;
+            if (timeDelta > ticksPerSec)
+            {
+                values[valIndex] = totalAlloc;
+                flags[valIndex] = doneGC;
+
+                if (totalAlloc != lastValue)
+                {
+                    lastValue = totalAlloc;
+                    UpdateGuiStr();
+                }
+
+                startTime = endTime;
+                totalAlloc = 0;
+                doneGC = false;
+                valIndex = (valIndex + 1) % GraphWidth;
             }
         }
 
@@ -123,32 +135,12 @@ namespace MemGraph
             guiStr = strBuild.ToString();
         }
 
-        public void FixedUpdate()
+        void FixedUpdate()
         {
             AddMemoryIncrement();
-            
-            // If at least 1 second has passed then record and reset
-            long endTime = Stopwatch.GetTimestamp();
-            long timeDelta = endTime - startTime;
-            //print("timeDelta = " + timeDelta);
-            if (timeDelta > ticksPerSec)
-            {
-                values[valIndex] = totalAlloc;
-                //print("totalAlloc = " + totalAlloc);
-
-                if (totalAlloc != lastValue)
-                {
-                    lastValue = totalAlloc;
-                    UpdateGuiStr();
-                }
-
-                startTime = endTime;
-                totalAlloc = 0;
-                valIndex = (valIndex + 1) % GraphWidth;
-            }
         }
 
-        public void Update()
+        void Update()
         {
             //print("Update Start");
             AddMemoryIncrement();
@@ -163,7 +155,6 @@ namespace MemGraph
                 {
                     // Increase scale
                     scaleIndex = (scaleIndex + 1) % numScales;
-                    vscale = valCycle[scaleIndex];
                     UpdateGuiStr();
                     fullUpdate = true;
                 }
@@ -171,7 +162,6 @@ namespace MemGraph
                 {
                     // Decrease scale
                     scaleIndex = (scaleIndex + numScales - 1) % numScales;
-                    vscale = valCycle[scaleIndex];
                     UpdateGuiStr();
                     fullUpdate = true;
                 }
@@ -189,6 +179,8 @@ namespace MemGraph
             // If we want to update this time
             if (lastRendered != valIndex)
             {
+                double scale = valCycle[scaleIndex];
+
                 // We're going to wrap this back round to the start so copy the value so 
                 int startlastRend = lastRendered;
 
@@ -197,7 +189,7 @@ namespace MemGraph
                 {
                     for (int x = startlastRend; x < GraphWidth; x++)
                     {
-                        DrawColumn(texGraph, x, (int)((double)values[x] * GraphHeight / vscale), redLine);
+                        DrawColumn(texGraph, x, (int)((double)values[x] * GraphHeight / scale), greenLine, flags[x] ? redLine : blackLine);
                     }
 
                     startlastRend = 0;
@@ -205,7 +197,7 @@ namespace MemGraph
 
                 for (int x = startlastRend; x < valIndex; x++)
                 {
-                    DrawColumn(texGraph, x, (int)((double)values[x] * GraphHeight / vscale), redLine);
+                    DrawColumn(texGraph, x, (int)((double)values[x] * GraphHeight / scale), greenLine, flags[x] ? redLine : blackLine);
                 }
 
                 if (valIndex < GraphWidth)
@@ -219,17 +211,17 @@ namespace MemGraph
             //print("Update End");
         }
 
-        private void DrawColumn(Texture2D tex, int x, int y, Color[] col)
+        void DrawColumn(Texture2D tex, int x, int y, Color[] fgcol, Color[] bgcol)
         {
             //print("drawcol(" + x + ", " + y + ")");
             if (y > GraphHeight - 1)
                 y = GraphHeight - 1;
-            tex.SetPixels(x, 0, 1, y + 1, col);
+            tex.SetPixels(x, 0, 1, y + 1, fgcol);
             if (y < GraphHeight - 1)
-                tex.SetPixels(x, y + 1, 1, GraphHeight - 1 - y, blackLine);
+                tex.SetPixels(x, y + 1, 1, GraphHeight - 1 - y, bgcol);
         }
 
-        public void OnGUI()
+        void OnGUI()
         {
             if (labelStyle == null)
                 labelStyle = new GUIStyle(GUI.skin.label);
@@ -242,10 +234,10 @@ namespace MemGraph
                 graphHeight = GUILayout.Height(GraphHeight);
 
             if (showUI)
-                windowPos = GUILayout.Window(3651275, windowPos, WindowGUI, "Profile Graph", wndWidth, wndHeight);
+                windowPos = GUILayout.Window(windowId, windowPos, WindowGUI, "Profile Graph", wndWidth, wndHeight);
         }
 
-        public void WindowGUI(int windowID)
+        void WindowGUI(int windowID)
         {
             GUILayout.BeginVertical();
 
