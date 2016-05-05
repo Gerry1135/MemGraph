@@ -236,7 +236,7 @@ namespace MemGraph
                 graphHeight = GUILayout.Height(GraphHeight);
 
             if (showUI)
-                windowPos = GUILayout.Window(windowId, windowPos, WindowGUI, "Profile Graph", wndWidth, wndHeight);
+                windowPos = GUILayout.Window(windowId, windowPos, WindowGUI, "MemGraph", wndWidth, wndHeight);
         }
 
         void WindowGUI(int windowID)
