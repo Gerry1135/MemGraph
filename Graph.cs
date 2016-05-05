@@ -9,7 +9,7 @@ namespace MemGraph
     public class Graph : MonoBehaviour
     {
         const int GraphWidth = 500;
-        const int GraphHeight = 200;
+        const int GraphHeight = 256;
 
         Rect windowPos = new Rect(80, 80, 400, 50);
         int windowId = 0;
@@ -38,9 +38,11 @@ namespace MemGraph
         bool fullUpdate = true;     // Flag to force re-render of entire texture (e.g. when changing scale)
 
         int scaleIndex = 4;         // Index of the current vertical scale
-        const int numScales = 6;    // Number of entries in the scale array
-        static double[] valCycle = { 1024, 10240, 102400, 1024 * 1024, 1024 * 1024 * 10, 1024 * 1024 * 100 };
-        static string[] valCycleStr = { "1 KB", "10 KB", "100 KB", "1 MB", "10 MB", "100 MB" };
+        const int numScales = 13;   // Number of entries in the scale array
+        const int kb = 1024;
+        const int mb = kb * kb;
+        static double[] valCycle = { 64 * kb, 128 * kb, 256 * kb, 512 * kb, mb, 2 * mb, 4 * mb, 8 * mb, 16 * mb, 32 * mb, 64 * mb, 128 * mb, 256 * mb };
+        static string[] valCycleStr = { "64 KB", "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB" };
 
         Color[] blackLine;
         Color[] redLine;
