@@ -245,11 +245,7 @@ namespace MemGraph
         void WindowGUI(int windowID)
         {
             GUILayout.BeginVertical();
-
-            GUILayout.BeginHorizontal();
             GUILayout.Label(guiStr, labelStyle);
-            GUILayout.EndHorizontal();
-
             GUILayout.Box(texGraph, wndWidth, graphHeight);
             GUILayout.EndVertical();
 
