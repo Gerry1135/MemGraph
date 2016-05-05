@@ -52,6 +52,7 @@ namespace MemGraph
         Color[] blackLine;
         Color[] redLine;
         Color[] greenLine;
+        Color[] blueLine;
 
         static StringBuilder strBuild = new StringBuilder(128);
 
@@ -68,12 +69,14 @@ namespace MemGraph
 
             redLine = new Color[GraphHeight];
             greenLine = new Color[GraphHeight];
+            blueLine = new Color[GraphHeight];
             blackLine = new Color[GraphHeight];
             for (int i = 0; i < blackLine.Length; i++)
             {
                 blackLine[i] = Color.black;
                 redLine[i] = Color.red;
                 greenLine[i] = Color.green;
+                blueLine[i] = Color.blue;
             }
 
             for (int j = 0; j < GraphWidth; j++)
@@ -219,7 +222,7 @@ namespace MemGraph
                 }
 
                 if (valIndex < GraphWidth)
-                    texGraph.SetPixels(valIndex, 0, 1, GraphHeight, blackLine);
+                    texGraph.SetPixels(valIndex, 0, 1, GraphHeight, blueLine);
                 if (valIndex != GraphWidth - 2)
                     texGraph.SetPixels((valIndex + 1) % GraphWidth, 0, 1, GraphHeight, blackLine);
                 texGraph.Apply();
