@@ -122,7 +122,10 @@ namespace MemGraph
                 startTime = endTime;
                 totalAlloc = 0;
                 doneGC = false;
+
+                // Increament the current value index and force full update if we have caught up with the rendering
                 valIndex = (valIndex + 1) % GraphWidth;
+                fullUpdate = (valIndex == lastRendered);
             }
         }
 
