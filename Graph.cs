@@ -83,10 +83,6 @@ namespace MemGraph
             ticksPerSec = Stopwatch.Frequency;
         }
 
-        void OnDestroy()
-        {
-        }
-
         void AddMemoryIncrement()
         {
             long currentMem = GC.GetTotalMemory(false);
