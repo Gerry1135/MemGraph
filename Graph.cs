@@ -105,20 +105,22 @@ namespace MemGraph
             // Remember the current memory for next time
             lastAlloc = currentMem;
 
-            // If at least 1 second has passed then record and reset
             long endTime = Stopwatch.GetTimestamp();
             long timeDelta = endTime - startTime;
             if (timeDelta > ticksPerSec)
             {
+                // At least 1 second has passed so record the values
                 values[valIndex] = totalAlloc;
                 flags[valIndex] = doneGC;
 
+                // If the gui string needs to change then update it and store the last used value
                 if (totalAlloc != lastValue)
                 {
                     lastValue = totalAlloc;
                     UpdateGuiStr();
                 }
 
+                // Reset the values for the next accumulation
                 startTime = endTime;
                 totalAlloc = 0;
                 doneGC = false;
@@ -131,6 +133,7 @@ namespace MemGraph
 
         void UpdateGuiStr()
         {
+            // We use a static StringBuilder to do this to avoid as much garbage as possible
             strBuild.Length = 0;
             strBuild.Append("Scale: ");
             strBuild.Append(valCycleStr[scaleIndex]);
