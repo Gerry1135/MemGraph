@@ -30,6 +30,10 @@ namespace MemGraph
         bool doneGC = false;        // Has a GC run (this is also stored)
 
         long lastValue = 0;         // The last value stored in the array
+        int lastFixedCount = 0;     // The last value of fixedCount used to build guiStr
+        int lastUpdateCount = 0;    // The last value of updateCount used to build guiStr
+        int fixedCount = 0;         // The count of FixedUpdate calls in the current interval
+        int updateCount = 0;        // The count of Update calls in the current interval
 
         string guiStr;              // The string at the top of the window (only updated when required)
 
@@ -111,15 +115,19 @@ namespace MemGraph
                 flags[valIndex] = doneGC;
 
                 // If the gui string needs to change then update it and store the last used value
-                if (totalAlloc != lastValue)
+                if (totalAlloc != lastValue || fixedCount != lastFixedCount || updateCount != lastUpdateCount)
                 {
                     lastValue = totalAlloc;
+                    lastFixedCount = fixedCount;
+                    lastUpdateCount = updateCount;
                     UpdateGuiStr();
                 }
 
                 // Reset the values for the next accumulation
                 startTime = endTime;
                 totalAlloc = 0;
+                fixedCount = 0;
+                updateCount = 0;
                 doneGC = false;
 
                 // Increament the current value index and force full update if we have caught up with the rendering
@@ -136,18 +144,23 @@ namespace MemGraph
             strBuild.Append(valCycleStr[scaleIndex]);
             strBuild.Append("   Last: ");
             strBuild.Append(lastValue / 1024);
-            strBuild.Append(" KB");
+            strBuild.Append(" KB   U: ");
+            strBuild.Append(lastUpdateCount);
+            strBuild.Append(" FU: ");
+            strBuild.Append(lastFixedCount);
             guiStr = strBuild.ToString();
         }
 
         void FixedUpdate()
         {
+            fixedCount += 1;
             AddMemoryIncrement();
         }
 
         void Update()
         {
             //print("Update Start");
+            updateCount += 1;
             AddMemoryIncrement();
 
             if (GameSettings.MODIFIER_KEY.GetKey())
