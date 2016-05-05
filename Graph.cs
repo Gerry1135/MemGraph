@@ -8,7 +8,7 @@ namespace MemGraph
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
     public class Graph : MonoBehaviour
     {
-        const int GraphWidth = 500;
+        const int GraphWidth = 512;
         const int GraphHeight = 256;
 
         Rect windowPos = new Rect(80, 80, 400, 50);
