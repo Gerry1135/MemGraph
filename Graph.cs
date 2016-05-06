@@ -30,13 +30,23 @@ namespace MemGraph
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
     public class Graph : MonoBehaviour
     {
+        const int GraphX = 10;
+        const int GraphY = 36;
         const int GraphWidth = 512;
         const int GraphHeight = 256;
+        const int LabelX = 10;
+        const int LabelY = 18;
+        const int LabelWidth = GraphWidth;
+        const int LabelHeight = 20;
+        const int WndWidth = GraphWidth + 10;
+        const int WndHeight = GraphHeight + 44;
 
-        Rect windowPos = new Rect(80, 80, 400, 50);
+        Rect windowPos = new Rect(80, 80, WndWidth, WndHeight);
         int windowId = 0;
         string windowTitle = "MemGraph 1.0.0.0";
-        bool showUI = false;
+        bool showUI = true;
+        Rect labelRect = new Rect(LabelX, LabelY, LabelWidth, LabelHeight);
+        Rect graphRect = new Rect(GraphX, GraphY, GraphWidth, GraphHeight);
 
         long[] values = new long[GraphWidth];
         bool[] flags = new bool[GraphWidth];
@@ -79,9 +89,6 @@ namespace MemGraph
         static StringBuilder strBuild = new StringBuilder(128);
 
         GUIStyle labelStyle;
-        GUILayoutOption wndWidth;
-        GUILayoutOption wndHeight;
-        GUILayoutOption graphHeight;
 
         void Awake()
         {
@@ -111,6 +118,9 @@ namespace MemGraph
 
             startTime = Stopwatch.GetTimestamp();
             ticksPerSec = Stopwatch.Frequency;
+
+            // Force a full update of the graph texture
+            fullUpdate = true;
         }
 
         void AddMemoryIncrement()
@@ -227,7 +237,7 @@ namespace MemGraph
                 // We're going to wrap this back round to the start so copy the value so 
                 int startlastRend = lastRendered;
 
-                // Update the columns from lastRendered to frameIndex
+                // Update the columns from lastRendered to valIndex wrapping round at the end
                 if (startlastRend >= valIndex)
                 {
                     for (int x = startlastRend; x < GraphWidth; x++)
@@ -269,24 +279,14 @@ namespace MemGraph
             if (labelStyle == null)
                 labelStyle = new GUIStyle(GUI.skin.label);
 
-            if (wndWidth == null)
-                wndWidth = GUILayout.Width(GraphWidth);
-            if (wndHeight == null)
-                wndHeight = GUILayout.Height(GraphHeight);
-            if (graphHeight == null)
-                graphHeight = GUILayout.Height(GraphHeight);
-
             if (showUI)
-                windowPos = GUILayout.Window(windowId, windowPos, WindowGUI, windowTitle, wndWidth, wndHeight);
+                windowPos = GUI.Window(windowId, windowPos, WindowGUI, windowTitle);
         }
 
         void WindowGUI(int windowID)
         {
-            GUILayout.BeginVertical();
-            GUILayout.Label(guiStr, labelStyle);
-            GUILayout.Box(texGraph, wndWidth, graphHeight);
-            GUILayout.EndVertical();
-
+            GUI.Label(labelRect, guiStr, labelStyle);
+            GUI.Box(graphRect, texGraph, labelStyle);
             GUI.DragWindow();
         }
     }
