@@ -38,8 +38,8 @@ namespace MemGraph
         const int LabelY = 18;
         const int LabelWidth = GraphWidth;
         const int LabelHeight = 20;
-        const int WndWidth = GraphWidth + 10;
-        const int WndHeight = GraphHeight + 44;
+        const int WndWidth = GraphWidth + 8;
+        const int WndHeight = GraphHeight + 42;
 
         Rect windowPos = new Rect(80, 80, WndWidth, WndHeight);
         int windowId = 0;
@@ -57,6 +57,7 @@ namespace MemGraph
 
         int lastColCount = 0;       // The most recent count of GC runs
         long lastAlloc = 0;         // The most recent value of total memory
+        long lastAllocMB = 0;       // The most recent value of total memory in MB displayed in window
 
         long totalAlloc = 0;        // The sum of all the memory deltas (this is the value stored in the array every ~1s)
         bool doneGC = false;        // Has a GC run (this is also stored)
@@ -115,6 +116,7 @@ namespace MemGraph
 
             lastColCount = GC.CollectionCount(GC.MaxGeneration);
             lastAlloc = GC.GetTotalMemory(false);
+            lastAllocMB = lastAlloc >> 20;
 
             startTime = Stopwatch.GetTimestamp();
             ticksPerSec = Stopwatch.Frequency;
@@ -149,9 +151,13 @@ namespace MemGraph
                 values[valIndex] = totalAlloc;
                 flags[valIndex] = doneGC;
 
+                // Calculate the new lastAllocMB value
+                long newMB = lastAlloc >> 20;
+
                 // If the gui string needs to change then update it and store the last used value
-                if (totalAlloc != lastValue || fixedCount != lastFixedCount || updateCount != lastUpdateCount)
+                if (totalAlloc != lastValue || fixedCount != lastFixedCount || updateCount != lastUpdateCount || newMB != lastAllocMB)
                 {
+                    lastAllocMB = newMB;
                     lastValue = totalAlloc;
                     lastFixedCount = fixedCount;
                     lastUpdateCount = updateCount;
@@ -175,13 +181,15 @@ namespace MemGraph
         {
             // We use a static StringBuilder to do this to avoid as much garbage as possible
             strBuild.Length = 0;
-            strBuild.Append("Scale: ");
+            strBuild.Append("Scale:");
             strBuild.Append(valCycleStr[scaleIndex]);
-            strBuild.Append("   Last: ");
+            strBuild.Append("   HWM:");
+            strBuild.Append(lastAllocMB);
+            strBuild.Append(" MB   Last:");
             strBuild.Append(lastValue / 1024);
-            strBuild.Append(" KB   U: ");
+            strBuild.Append(" KB   U:");
             strBuild.Append(lastUpdateCount);
-            strBuild.Append(" FU: ");
+            strBuild.Append("   FU:");
             strBuild.Append(lastFixedCount);
             guiStr = strBuild.ToString();
         }
