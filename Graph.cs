@@ -43,7 +43,7 @@ namespace MemGraph
 
         Rect windowPos = new Rect(80, 80, WndWidth, WndHeight);
         int windowId = 0;
-        string windowTitle = "MemGraph 1.0.0.1";
+        string windowTitle = "MemGraph 1.0.0.2";
         bool showUI = true;
         Rect labelRect = new Rect(LabelX, LabelY, LabelWidth, LabelHeight);
         Rect graphRect = new Rect(GraphX, GraphY, GraphWidth, GraphHeight);
