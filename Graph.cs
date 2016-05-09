@@ -41,16 +41,20 @@ namespace MemGraph
         const int WndWidth = GraphWidth + 8;
         const int WndHeight = GraphHeight + 42;
 
-        Rect windowPos = new Rect(80, 80, WndWidth, WndHeight);
-        int windowId = 0;
-        string windowTitle = "MemGraph 1.0.0.2";
-        bool showUI = true;
-        Rect labelRect = new Rect(LabelX, LabelY, LabelWidth, LabelHeight);
-        Rect graphRect = new Rect(GraphX, GraphY, GraphWidth, GraphHeight);
+        const int numScales = 13;   // Number of entries in the scale array
+        const int kb = 1024;
+        const int mb = kb * kb;
 
-        long[] values = new long[GraphWidth];
-        bool[] flags = new bool[GraphWidth];
-        Texture2D texGraph = new Texture2D(GraphWidth, GraphHeight, TextureFormat.ARGB32, false);
+        Rect windowPos;
+        int windowId = 0;
+        string windowTitle;
+        bool showUI = true;
+        Rect labelRect;
+        Rect graphRect;
+
+        long[] values;
+        bool[] flags;
+        Texture2D texGraph;
 
         int valIndex = 0;           // The current index into the values array
         int lastRendered = 0;       // The last index of the values array that has been rendered into the texture
@@ -76,18 +80,15 @@ namespace MemGraph
         bool fullUpdate = true;     // Flag to force re-render of entire texture (e.g. when changing scale)
 
         int scaleIndex = 4;         // Index of the current vertical scale
-        const int numScales = 13;   // Number of entries in the scale array
-        const int kb = 1024;
-        const int mb = kb * kb;
-        static double[] valCycle = { 64 * kb, 128 * kb, 256 * kb, 512 * kb, mb, 2 * mb, 4 * mb, 8 * mb, 16 * mb, 32 * mb, 64 * mb, 128 * mb, 256 * mb };
-        static string[] valCycleStr = { "64 KB", "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB" };
+        static double[] valCycle;
+        static string[] valCycleStr;
 
         Color[] blackLine;
         Color[] redLine;
         Color[] greenLine;
         Color[] blueLine;
 
-        static StringBuilder strBuild = new StringBuilder(128);
+        static StringBuilder strBuild;
 
         GUIStyle labelStyle;
 
@@ -96,6 +97,20 @@ namespace MemGraph
             DontDestroyOnLoad(gameObject);
 
             windowId = Guid.NewGuid().GetHashCode();
+            windowTitle = "MemGraph 1.0.0.2";
+
+            strBuild = new StringBuilder(128);
+
+            valCycle = new double[] { 64 * kb, 128 * kb, 256 * kb, 512 * kb, 1 * mb, 2 * mb, 4 * mb, 8 * mb, 16 * mb, 32 * mb, 64 * mb, 128 * mb, 256 * mb };
+            valCycleStr = new string[] { "64 KB", "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB" };
+
+            windowPos.Set(80, 80, WndWidth, WndHeight);
+            labelRect.Set(LabelX, LabelY, LabelWidth, LabelHeight);
+            graphRect.Set(GraphX, GraphY, GraphWidth, GraphHeight);
+
+            values = new long[GraphWidth];
+            flags = new bool[GraphWidth];
+            texGraph = new Texture2D(GraphWidth, GraphHeight, TextureFormat.ARGB32, false);
 
             redLine = new Color[GraphHeight];
             greenLine = new Color[GraphHeight];
