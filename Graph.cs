@@ -99,7 +99,7 @@ namespace MemGraph
             DontDestroyOnLoad(gameObject);
 
             windowId = Guid.NewGuid().GetHashCode();
-            windowTitle = "MemGraph 1.0.0.2";
+            windowTitle = "MemGraph 1.0.0.3";
 
             strBuild = new StringBuilder(128);
 
