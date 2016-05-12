@@ -92,6 +92,8 @@ namespace MemGraph
 
         GUIStyle labelStyle;
 
+        GUI.WindowFunction wndFunction = null;
+
         void Awake()
         {
             DontDestroyOnLoad(gameObject);
@@ -299,18 +301,21 @@ namespace MemGraph
 
         void OnGUI()
         {
+            if (wndFunction == null)
+                wndFunction = new GUI.WindowFunction(WindowGUI);
+
             if (labelStyle == null)
                 labelStyle = new GUIStyle(GUI.skin.label);
 
             if (showUI)
-                windowPos = GUI.Window(windowId, windowPos, WindowGUI, windowTitle);
+                windowPos = GUI.Window(windowId, windowPos, wndFunction, windowTitle);
         }
 
         void WindowGUI(int windowID)
         {
             GUI.Label(labelRect, guiStr, labelStyle);
             GUI.Box(graphRect, texGraph, labelStyle);
-            GUI.DragWindow();
+            GUI.DragWindow(windowPos);
         }
     }
 }
