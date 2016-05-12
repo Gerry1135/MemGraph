@@ -46,6 +46,7 @@ namespace MemGraph
         const int mb = kb * kb;
 
         Rect windowPos;
+        Rect windowDragRect;
         int windowId = 0;
         string windowTitle;
         bool showUI = true;
@@ -99,7 +100,7 @@ namespace MemGraph
             DontDestroyOnLoad(gameObject);
 
             windowId = Guid.NewGuid().GetHashCode();
-            windowTitle = "MemGraph 1.0.0.3";
+            windowTitle = "MemGraph 1.0.0.4";
 
             strBuild = new StringBuilder(128);
 
@@ -107,6 +108,7 @@ namespace MemGraph
             valCycleStr = new string[] { "64 KB", "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB" };
 
             windowPos.Set(80, 80, WndWidth, WndHeight);
+            windowDragRect.Set(0, 0, WndWidth, WndHeight);
             labelRect.Set(LabelX, LabelY, LabelWidth, LabelHeight);
             graphRect.Set(GraphX, GraphY, GraphWidth, GraphHeight);
 
@@ -315,7 +317,7 @@ namespace MemGraph
         {
             GUI.Label(labelRect, guiStr, labelStyle);
             GUI.Box(graphRect, texGraph, labelStyle);
-            GUI.DragWindow(windowPos);
+            GUI.DragWindow(windowDragRect);
         }
     }
 }
