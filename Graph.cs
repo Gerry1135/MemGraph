@@ -105,7 +105,7 @@ namespace MemGraph
             DontDestroyOnLoad(gameObject);
 
             windowId = Guid.NewGuid().GetHashCode();
-            windowTitle = "MemGraph 1.0.0.4";
+            windowTitle = "MemGraph 1.0.0.5";
 
             strBuild = new StringBuilder(128);
             Log = new LogMsg();
