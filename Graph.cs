@@ -24,12 +24,15 @@ using System;
 using System.Diagnostics;
 using System.Text;
 using UnityEngine;
+using KSP.IO;
 
 namespace MemGraph
 {
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
     public class Graph : MonoBehaviour
     {
+        const String testFilename = "test.cfg";
+
         const int GraphX = 10;
         const int GraphY = 36;
         const int GraphWidth = 512;
@@ -44,6 +47,8 @@ namespace MemGraph
         const int numScales = 13;   // Number of entries in the scale array
         const int kb = 1024;
         const int mb = kb * kb;
+
+        LogMsg Log;
 
         Rect windowPos;
         Rect windowDragRect;
@@ -103,6 +108,7 @@ namespace MemGraph
             windowTitle = "MemGraph 1.0.0.4";
 
             strBuild = new StringBuilder(128);
+            Log = new LogMsg();
 
             valCycle = new double[] { 64 * kb, 128 * kb, 256 * kb, 512 * kb, 1 * mb, 2 * mb, 4 * mb, 8 * mb, 16 * mb, 32 * mb, 64 * mb, 128 * mb, 256 * mb };
             valCycleStr = new string[] { "64 KB", "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB" };
@@ -227,6 +233,10 @@ namespace MemGraph
 
             if (GameSettings.MODIFIER_KEY.GetKey())
             {
+                if (Input.GetKeyDown(KeyCode.KeypadDivide))
+                {
+                    RunTestCode();
+                }
                 if (Input.GetKeyDown(KeyCode.KeypadMultiply))
                 {
                     showUI = !showUI;
@@ -318,6 +328,104 @@ namespace MemGraph
             GUI.Label(labelRect, guiStr, labelStyle);
             GUI.Box(graphRect, texGraph, labelStyle);
             GUI.DragWindow(windowDragRect);
+        }
+
+        void RunTestCode()
+        {
+            int NumBlocks = 8;
+            int BlockSize = 4;
+
+            if (File.Exists<Graph>(testFilename))
+            {
+                String[] lines = File.ReadAllLines<Graph>(testFilename);
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    String[] line = lines[i].Split('=');
+                    if (line.Length == 2)
+                    {
+                        String key = line[0].Trim();
+                        String val = line[1].Trim();
+                        if (key == "size")
+                            ReadInt32(val, ref BlockSize);
+                        else if (key == "num")
+                            ReadInt32(val, ref NumBlocks);
+                    }
+                    else
+                    {
+                        Log.buf.Append("Ignoring invalid line in settings: '");
+                        Log.buf.Append(lines[i]);
+                        Log.buf.AppendLine("'");
+                    }
+                }
+            }
+            else
+                Log.buf.AppendLine("Can't find test file");
+
+            Log.buf.Append("MemGraph Test(");
+            Log.buf.Append(NumBlocks);
+            Log.buf.Append(", ");
+            Log.buf.Append(BlockSize);
+            Log.buf.AppendLine(")");
+
+            long startMem = GC.GetTotalMemory(false);
+            int startCount = GC.CollectionCount(GC.MaxGeneration);
+
+            Log.buf.Append("Initial memory = ");
+            Log.buf.Append(startMem);
+            Log.buf.Append("  (counts = ");
+            Log.buf.Append(startCount);
+            Log.buf.AppendLine(")");
+
+            long lastMem = startMem;
+            byte[] block;
+            for (int i = 0; i < NumBlocks; i++)
+            {
+                // Allocate a block
+                block = new byte[BlockSize];
+
+                // If a GC has run then abort
+                int curCount = GC.CollectionCount(GC.MaxGeneration);
+                if (curCount != startCount)
+                {
+                    Log.buf.AppendLine("GC has run, aborting");
+                    break;
+                }
+
+                long curMem = GC.GetTotalMemory(false);
+                if (curMem != lastMem)
+                {
+                    Log.buf.Append("Block ");
+                    Log.buf.Append(i);
+                    Log.buf.Append(" increase = ");
+                    Log.buf.Append(curMem - lastMem);
+                    Log.buf.AppendLine("");
+
+                    lastMem = curMem;
+                }
+            }
+
+            long endMem = GC.GetTotalMemory(false);
+            int endCount = GC.CollectionCount(GC.MaxGeneration);
+            Log.buf.Append("Final memory = ");
+            Log.buf.Append(endMem);
+            Log.buf.Append("  (counts = ");
+            Log.buf.Append(endCount);
+            Log.buf.AppendLine(")");
+
+            Log.Flush();
+        }
+
+        void ReadInt32(String str, ref Int32 variable)
+        {
+            Int32 value = 0;
+            if (Int32.TryParse(str, out value))
+                variable = value;
+        }
+
+        void Trace(String message)
+        {
+            Log.buf.AppendLine(message);
         }
     }
 }
