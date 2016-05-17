@@ -10,7 +10,7 @@ Copy the DLL from the zip file into the GameData folder of your KSP installation
 ## Usage
 Mod-KeypadMultiply toggles the display of the window.  
 Mod-KeypadPlus increases the vertical scale of the graph.  
-Mod-KeypadMinus decreases the vertical scale of the graph.
+Mod-KeypadMinus decreases the vertical scale of the graph.  
 Mod-KeypadDivide runs a bit of test code controlled by MemGraph\PluginData\test.cfg
 
 Every second the plugin totals up all the memory allocated on the heap and whether any garbage collections have run.  It also 
