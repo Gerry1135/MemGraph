@@ -50,6 +50,8 @@ namespace MemGraph
 
         LogMsg Log;
 
+        PadHeap padHeap;
+
         Rect windowPos;
         Rect windowDragRect;
         int windowId = 0;
@@ -105,10 +107,12 @@ namespace MemGraph
             DontDestroyOnLoad(gameObject);
 
             windowId = Guid.NewGuid().GetHashCode();
-            windowTitle = "MemGraph 1.0.0.5";
+            windowTitle = "MemGraph 1.0.0.6";
 
             strBuild = new StringBuilder(128);
             Log = new LogMsg();
+
+            padHeap = new PadHeap();
 
             valCycle = new double[] { 64 * kb, 128 * kb, 256 * kb, 512 * kb, 1 * mb, 2 * mb, 4 * mb, 8 * mb, 16 * mb, 32 * mb, 64 * mb, 128 * mb, 256 * mb };
             valCycleStr = new string[] { "64 KB", "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB" };
@@ -233,6 +237,10 @@ namespace MemGraph
 
             if (GameSettings.MODIFIER_KEY.GetKey())
             {
+                if (Input.GetKeyDown(KeyCode.End))
+                {
+                    padHeap.Pad();
+                }
                 if (Input.GetKeyDown(KeyCode.KeypadDivide))
                 {
                     RunTestCode();

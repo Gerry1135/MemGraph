@@ -11,7 +11,8 @@ Copy the DLL from the zip file into the GameData folder of your KSP installation
 Mod-KeypadMultiply toggles the display of the window.  
 Mod-KeypadPlus increases the vertical scale of the graph.  
 Mod-KeypadMinus decreases the vertical scale of the graph.  
-Mod-KeypadDivide runs a bit of test code controlled by MemGraph\PluginData\test.cfg
+Mod-KeypadDivide runs a bit of test code controlled by MemGraph\PluginData\test.cfg.  
+Mod-End pads the Mono heap with approx 1.5 GB of headroom to reduce frequency of garbage collections.
 
 Every second the plugin totals up all the memory allocated on the heap and whether any garbage collections have run.  It also 
 displays the current total heap allocation and counts the number of times the Update and FixedUpdate functions are called. 
