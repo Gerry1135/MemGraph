@@ -21,6 +21,7 @@
 */
 
 using System;
+using KSP.IO;
 
 namespace MemGraph
 {
@@ -45,7 +46,7 @@ namespace MemGraph
 
     class PadHeap
     {
-        int megsPerSize = 32;
+        const String configFilename = "padheap.cfg";
 
         Item8 head8 = null;
         Item16 head16 = null;
@@ -53,18 +54,18 @@ namespace MemGraph
 
         LogMsg Log = new LogMsg();
 
-        int[] lengths = new int[] { 8, 16, 24, 40, 56, 72, 88, 120, 152, 184, 216, 272, 328, 408 /*, 640, 776, 984, 1320, 2008*/ };
-        int[] chunks = new int[] { 4, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-        object[][] heads = new object[][] { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null };
+        int[] lengths = new int[] { 8, 16, 24, 32, 40, 48, 64, 80, 96, 112, 144, 176, 208, 240, 296, 352, 432, 664, 800, 1008, 1344, 2032 };
+        int[] counts = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        object[][] heads = new object[][] { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null };
 
         public void Pad()
         {
             try
             {
+                UpdateFromConfig();
+
                 long curMem = GC.GetTotalMemory(false);
-                Log.buf.Append("Pad(");
-                Log.buf.Append(megsPerSize);
-                Log.buf.Append(") started, memory = ");
+                Log.buf.Append("Pad started, memory = ");
                 Log.buf.Append((curMem / 1024));
                 Log.buf.AppendLine(" KB");
 
@@ -86,11 +87,17 @@ namespace MemGraph
                 Pad24();
 
                 // Do the rest of the sizes with arrays of object
-                for (int i = 0; i < lengths.Length; i++)
+                for (int i = 3; i < lengths.Length; i++)
                     PadArray(i);
 
                 curMem = GC.GetTotalMemory(false);
                 Log.buf.Append("After padding, memory = ");
+                Log.buf.Append((curMem / 1024));
+                Log.buf.AppendLine(" KB");
+
+                GC.Collect();
+                curMem = GC.GetTotalMemory(false);
+                Log.buf.Append("After final collect, memory = ");
                 Log.buf.Append((curMem / 1024));
                 Log.buf.AppendLine(" KB");
             }
@@ -99,20 +106,54 @@ namespace MemGraph
                 Log.buf.AppendLine(e.ToString());
             }
             Log.Flush();
+        }
 
-            //megsPerSize = megsPerSize * 2;
+        void UpdateFromConfig()
+        {
+            for (int i = 0; i < counts.Length; i++)
+                counts[i] = 0;
+
+            if (File.Exists<Graph>(configFilename))
+            {
+                String[] lines = File.ReadAllLines<Graph>(configFilename);
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    String[] line = lines[i].Split(':');
+                    if (line.Length == 2)
+                    {
+                        String val = line[1].Trim();
+                        ReadInt32(val, ref counts[i]);
+                        //Log.buf.Append("counts[");
+                        //Log.buf.Append(i);
+                        //Log.buf.Append("] = ");
+                        //Log.buf.Append(counts[i]);
+                        //Log.buf.AppendLine("");
+                    }
+                    else
+                    {
+                        Log.buf.Append("Ignoring invalid line in padheap.cfg: '");
+                        Log.buf.Append(lines[i]);
+                        Log.buf.AppendLine("'");
+                    }
+                }
+            }
+            else
+                Log.buf.AppendLine("Can't find padheap.cfg");
         }
 
         void Pad8()
         {
-            Log.buf.AppendLine("Pad8");
+            long count = counts[0];
+            Log.buf.Append("Pad(8): ");
+            Log.buf.Append(count);
+            Log.buf.AppendLine("");
 
             long lastMem = GC.GetTotalMemory(false);
-            long totalAlloc = 0;    // The amount of memory we have locked against GC
-            long maxAlloc = megsPerSize * 10 * 1024 * 1024;
-            Item8 tempHead = null;
+            long numPads = 0;
+            Item8 temp;
             Item8 test;
-            while (totalAlloc < maxAlloc)
+            while (numPads < count)
             {
                 // Allocate a block
                 test = new Item8();
@@ -120,7 +161,9 @@ namespace MemGraph
                 long curMem = GC.GetTotalMemory(false);
                 if (curMem == lastMem + 4096)
                 {
-                    totalAlloc += 4096;
+                    //Log.buf.Append("Adding block to keep list, num = ");
+                    //Log.buf.Append(numPads);
+                    //Log.buf.AppendLine("");
 
                     // Add the block to the keep list
                     test.next = head8;
@@ -128,9 +171,11 @@ namespace MemGraph
                 }
                 else
                 {
-                    // Add the block to the temp list
-                    test.next = tempHead;
-                    tempHead = test;
+                    // Store the block temporarily so the next new doesn't reuse it
+                    temp = test;
+
+                    if (head8 != null)
+                        numPads++;
                 }
 
                 lastMem = curMem;
@@ -139,14 +184,16 @@ namespace MemGraph
 
         void Pad16()
         {
-            Log.buf.AppendLine("Pad16");
+            long count = counts[1];
+            Log.buf.Append("Pad(16): ");
+            Log.buf.Append(count);
+            Log.buf.AppendLine("");
 
             long lastMem = GC.GetTotalMemory(false);
-            long totalAlloc = 0;    // The amount of memory we have locked against GC
-            long maxAlloc = megsPerSize * 7 * 1024 * 1024;
-            Item16 tempHead = null;
+            long numPads = 0;
+            Item16 temp;
             Item16 test;
-            while (totalAlloc < maxAlloc)
+            while (numPads < count)
             {
                 // Allocate a block
                 test = new Item16();
@@ -154,7 +201,9 @@ namespace MemGraph
                 long curMem = GC.GetTotalMemory(false);
                 if (curMem == lastMem + 4096)
                 {
-                    totalAlloc += 4096;
+                    //Log.buf.Append("Adding block to keep list, num = ");
+                    //Log.buf.Append(numPads);
+                    //Log.buf.AppendLine("");
 
                     // Add the block to the keep list
                     test.next = head16;
@@ -162,9 +211,11 @@ namespace MemGraph
                 }
                 else
                 {
-                    // Add the block to the temp list
-                    test.next = tempHead;
-                    tempHead = test;
+                    // Store the block temporarily so the next new doesn't reuse it
+                    temp = test;
+
+                    if (head16 != null)
+                        numPads++;
                 }
 
                 lastMem = curMem;
@@ -173,14 +224,16 @@ namespace MemGraph
 
         void Pad24()
         {
-            Log.buf.AppendLine("Pad24");
+            long count = counts[2];
+            Log.buf.Append("Pad(24): ");
+            Log.buf.Append(count);
+            Log.buf.AppendLine("");
 
             long lastMem = GC.GetTotalMemory(false);
-            long totalAlloc = 0;    // The amount of memory we have locked against GC
-            long maxAlloc = megsPerSize * 5 * 1024 * 1024;
-            Item24 tempHead = null;
+            long numPads = 0;
+            Item24 temp;
             Item24 test;
-            while (totalAlloc < maxAlloc)
+            while (numPads < count)
             {
                 // Allocate a block
                 test = new Item24();
@@ -188,7 +241,9 @@ namespace MemGraph
                 long curMem = GC.GetTotalMemory(false);
                 if (curMem == lastMem + 4096)
                 {
-                    totalAlloc += 4096;
+                    //Log.buf.Append("Adding block to keep list, num = ");
+                    //Log.buf.Append(numPads);
+                    //Log.buf.AppendLine("");
 
                     // Add the block to the keep list
                     test.next = head24;
@@ -196,9 +251,11 @@ namespace MemGraph
                 }
                 else
                 {
-                    // Add the block to the temp list
-                    test.next = tempHead;
-                    tempHead = test;
+                    // Store the block temporarily so the next new doesn't reuse it
+                    temp = test;
+
+                    if (head24 != null)
+                        numPads++;
                 }
 
                 lastMem = curMem;
@@ -208,18 +265,20 @@ namespace MemGraph
         void PadArray(int index)
         {
             int bytes = lengths[index];
-            int refCount = bytes / 8;
+            int refCount = (bytes - 24) / 8;
+            long count = counts[index];
 
             Log.buf.Append("PadArray(");
             Log.buf.Append(bytes);
-            Log.buf.AppendLine(")");
+            Log.buf.Append("): ");
+            Log.buf.Append(count);
+            Log.buf.AppendLine("");
 
             long lastMem = GC.GetTotalMemory(false);
-            long totalAlloc = 0;    // The amount of memory we have locked against GC
-            long maxAlloc = megsPerSize * chunks[index] * 1024 * 1024;
-            object[] tempHead = null;
+            long numPads = 0;
+            object[] temp;
             object[] test;
-            while (totalAlloc < maxAlloc)
+            while (numPads < count)
             {
                 // Allocate a block
                 test = new object[refCount];
@@ -227,7 +286,9 @@ namespace MemGraph
                 long curMem = GC.GetTotalMemory(false);
                 if (curMem == lastMem + 4096)
                 {
-                    totalAlloc += 4096;
+                    //Log.buf.Append("Adding block to keep list, num = ");
+                    //Log.buf.Append(numPads);
+                    //Log.buf.AppendLine("");
 
                     // Add the block to the keep list
                     test[0] = heads[index];
@@ -235,13 +296,22 @@ namespace MemGraph
                 }
                 else
                 {
-                    // Add the block to the temp list
-                    test[0] = tempHead;
-                    tempHead = test;
+                    // Store the block temporarily so the next new doesn't reuse it
+                    temp = test;
+
+                    if (heads[index] != null)
+                        numPads++;
                 }
 
                 lastMem = curMem;
             }
+        }
+
+        void ReadInt32(String str, ref Int32 variable)
+        {
+            Int32 value = 0;
+            if (Int32.TryParse(str, out value))
+                variable = value;
         }
     }
 }

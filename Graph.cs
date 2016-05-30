@@ -35,7 +35,7 @@ namespace MemGraph
 
         const int GraphX = 10;
         const int GraphY = 36;
-        const int GraphWidth = 512;
+        const int GraphWidth = 600;
         const int GraphHeight = 256;
         const int LabelX = 10;
         const int LabelY = 18;
@@ -77,10 +77,18 @@ namespace MemGraph
         long lastValue = 0;         // The last value stored in the array
         int lastFixedCount = 0;     // The last value of fixedCount used to build guiStr
         int lastUpdateCount = 0;    // The last value of updateCount used to build guiStr
+        long lastMinHeapMB = 0;     // The heap size after the last GC run
+        long lastMaxHeapMB = 0;     // The heap size immediately before the last GC run
+        long lastGCInterval = 0;
+
         int fixedCount = 0;         // The count of FixedUpdate calls in the current interval
         int updateCount = 0;        // The count of Update calls in the current interval
+        long minHeap = 0;           // The heap size after the last GC run
+        long maxHeap = 0;           // The heap size immediately before the last GC run
 
         string guiStr;              // The string at the top of the window (only updated when required)
+
+        long prevGCTime = 0;
 
         long startTime;             // The timestamp totalAlloc was last stored
         long ticksPerSec;           // The number of timestamp ticks in a second
@@ -107,7 +115,7 @@ namespace MemGraph
             DontDestroyOnLoad(gameObject);
 
             windowId = Guid.NewGuid().GetHashCode();
-            windowTitle = "MemGraph 1.0.0.6";
+            windowTitle = "MemGraph 1.0.0.7";
 
             strBuild = new StringBuilder(128);
             Log = new LogMsg();
@@ -156,12 +164,19 @@ namespace MemGraph
 
         void AddMemoryIncrement()
         {
+            long endTime = Stopwatch.GetTimestamp();
+
             long currentMem = GC.GetTotalMemory(false);
             int colCount = GC.CollectionCount(GC.MaxGeneration);
             if (lastColCount != colCount)
             {
                 doneGC = true;
                 lastColCount = colCount;
+                minHeap = currentMem;     // Store current as min
+                maxHeap = lastAlloc;
+
+                lastGCInterval = (long)(((double)(endTime - prevGCTime) / (double)ticksPerSec) + 0.5d);
+                prevGCTime = endTime;
             }
 
             // If the GC has run then the total memory may have shrunk so only add if it increases
@@ -172,7 +187,6 @@ namespace MemGraph
             // Remember the current memory for next time
             lastAlloc = currentMem;
 
-            long endTime = Stopwatch.GetTimestamp();
             long timeDelta = endTime - startTime;
             if (timeDelta > ticksPerSec)
             {
@@ -183,15 +197,13 @@ namespace MemGraph
                 // Calculate the new lastAllocMB value
                 long newMB = lastAlloc >> 20;
 
-                // If the gui string needs to change then update it and store the last used value
-                if (totalAlloc != lastValue || fixedCount != lastFixedCount || updateCount != lastUpdateCount || newMB != lastAllocMB)
-                {
-                    lastAllocMB = newMB;
-                    lastValue = totalAlloc;
-                    lastFixedCount = fixedCount;
-                    lastUpdateCount = updateCount;
-                    UpdateGuiStr();
-                }
+                lastAllocMB = newMB;
+                lastValue = totalAlloc;
+                lastFixedCount = fixedCount;
+                lastUpdateCount = updateCount;
+                lastMinHeapMB = minHeap >> 20;
+                lastMaxHeapMB = maxHeap >> 20;
+                UpdateGuiStr();
 
                 // Reset the values for the next accumulation
                 startTime = endTime;
@@ -212,14 +224,21 @@ namespace MemGraph
             strBuild.Length = 0;
             strBuild.Append("Scale:");
             strBuild.Append(valCycleStr[scaleIndex]);
-            strBuild.Append("   HWM:");
+            strBuild.Append("   Heap Min:");
+            strBuild.Append(lastMinHeapMB);
+            strBuild.Append("   Cur:");
             strBuild.Append(lastAllocMB);
+            strBuild.Append("   Max:");
+            strBuild.Append(lastMaxHeapMB);
             strBuild.Append(" MB   Last:");
             strBuild.Append(lastValue / 1024);
-            strBuild.Append(" KB   U:");
+            strBuild.Append(" KB   R:");
             strBuild.Append(lastUpdateCount);
-            strBuild.Append("   FU:");
+            strBuild.Append("   P:");
             strBuild.Append(lastFixedCount);
+            strBuild.Append("   Int:");
+            strBuild.Append(lastGCInterval);
+            strBuild.Append(" s");
             guiStr = strBuild.ToString();
         }
 
