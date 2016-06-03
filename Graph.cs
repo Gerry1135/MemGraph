@@ -110,9 +110,18 @@ namespace MemGraph
 
         GUI.WindowFunction wndFunction = null;
 
+        static Graph instance = null;
+
+        public static bool IsOpen()
+        {
+            return instance != null ? instance.showUI : false;
+        }
+
         void Awake()
         {
             DontDestroyOnLoad(gameObject);
+
+            instance = this;
 
             windowId = Guid.NewGuid().GetHashCode();
             windowTitle = "MemGraph 1.0.0.7";
