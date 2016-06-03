@@ -10,10 +10,10 @@ namespace MemGraph
     {
         const String configFilename = "editorcpu.cfg";
 
-        bool killCrew = true;
-        bool killProps = true;
-        bool killAnims = true;
-        bool killLights = true;
+        bool killCrew = false;
+        bool killProps = false;
+        bool killAnims = false;
+        bool killLights = false;
 
         public void Start()
         {
