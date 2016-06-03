@@ -46,6 +46,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EditorCPU.cs" />
     <Compile Include="Graph.cs" />
     <Compile Include="LogMsg.cs" />
     <Compile Include="PadHeap.cs" />
