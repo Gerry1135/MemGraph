@@ -99,6 +99,8 @@ namespace MemGraph
         static double[] valCycle;
         static string[] valCycleStr;
 
+        static string[] hexchars;
+
         Color[] blackLine;
         Color[] redLine;
         Color[] greenLine;
@@ -133,6 +135,8 @@ namespace MemGraph
 
             valCycle = new double[] { 64 * kb, 128 * kb, 256 * kb, 512 * kb, 1 * mb, 2 * mb, 4 * mb, 8 * mb, 16 * mb, 32 * mb, 64 * mb, 128 * mb, 256 * mb };
             valCycleStr = new string[] { "64 KB", "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB" };
+
+            hexchars = new string[] { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F" };
 
             windowPos.Set(80, 80, WndWidth, WndHeight);
             windowDragRect.Set(0, 0, WndWidth, WndHeight);
@@ -368,87 +372,121 @@ namespace MemGraph
 
         void RunTestCode()
         {
-            int NumBlocks = 8;
-            int BlockSize = 4;
-
-            if (File.Exists<Graph>(testFilename))
+            try
             {
-                String[] lines = File.ReadAllLines<Graph>(testFilename);
 
-                for (int i = 0; i < lines.Length; i++)
+                int NumBlocks = 8;
+                int BlockSize = 4;
+
+                if (File.Exists<Graph>(testFilename))
                 {
-                    String[] line = lines[i].Split('=');
-                    if (line.Length == 2)
+                    String[] lines = File.ReadAllLines<Graph>(testFilename);
+
+                    for (int i = 0; i < lines.Length; i++)
                     {
-                        String key = line[0].Trim();
-                        String val = line[1].Trim();
-                        if (key == "size")
-                            ReadInt32(val, ref BlockSize);
-                        else if (key == "num")
-                            ReadInt32(val, ref NumBlocks);
-                    }
-                    else
-                    {
-                        Log.buf.Append("Ignoring invalid line in settings: '");
-                        Log.buf.Append(lines[i]);
-                        Log.buf.AppendLine("'");
+                        String[] line = lines[i].Split('=');
+                        if (line.Length == 2)
+                        {
+                            String key = line[0].Trim();
+                            String val = line[1].Trim();
+                            if (key == "size")
+                                ReadInt32(val, ref BlockSize);
+                            else if (key == "num")
+                                ReadInt32(val, ref NumBlocks);
+                        }
+                        else
+                        {
+                            Log.buf.Append("Ignoring invalid line in settings: '");
+                            Log.buf.Append(lines[i]);
+                            Log.buf.AppendLine("'");
+                        }
                     }
                 }
+                else
+                    Log.buf.AppendLine("Can't find test file");
+
+                Log.buf.Append("MemGraph Test(");
+                Log.buf.Append(NumBlocks);
+                Log.buf.Append(", ");
+                Log.buf.Append(BlockSize);
+                Log.buf.AppendLine(")");
+
+                long startMem = GC.GetTotalMemory(false);
+                int startCount = GC.CollectionCount(GC.MaxGeneration);
+
+                Log.buf.Append("Initial memory = ");
+                Log.buf.Append(startMem);
+                Log.buf.Append("  (counts = ");
+                Log.buf.Append(startCount);
+                Log.buf.AppendLine(")");
+
+                long lastMem = startMem;
+                byte[] block;
+                for (int i = 0; i < NumBlocks; i++)
+                {
+                    // Allocate a block
+                    block = new byte[BlockSize];
+
+                    int len = block.Length;
+
+                    // Dump out the 64 bytes before &block[0]
+                    if (i == 0)
+                    {
+                        unsafe
+                        {
+                            fixed (byte* ptr = &block[0])
+                            {
+                                Log.buf.Append("&block[0] = ");
+                                Log.buf.Append((long)ptr);
+                                Log.buf.AppendLine("");
+                                for (byte* p = ptr - 64; p < ptr; p += 16)
+                                {
+                                    for (byte* q = p; q < p + 16; q++)
+                                    {
+                                        byte val = *q;
+                                        Log.buf.Append(hexchars[(val >> 4) & 15]);
+                                        Log.buf.Append(hexchars[val & 15]);
+                                        Log.buf.Append(" ");
+                                    }
+                                    Log.buf.AppendLine("");
+                                }
+                            }
+                        }
+                    }
+
+                    // If a GC has run then abort
+                    int curCount = GC.CollectionCount(GC.MaxGeneration);
+                    if (curCount != startCount)
+                    {
+                        Log.buf.AppendLine("GC has run, aborting");
+                        break;
+                    }
+
+                    long curMem = GC.GetTotalMemory(false);
+                    if (curMem != lastMem)
+                    {
+                        Log.buf.Append("Block ");
+                        Log.buf.Append(i);
+                        Log.buf.Append(" increase = ");
+                        Log.buf.Append(curMem - lastMem);
+                        Log.buf.AppendLine("");
+
+                        lastMem = curMem;
+                    }
+                }
+
+                long endMem = GC.GetTotalMemory(false);
+                int endCount = GC.CollectionCount(GC.MaxGeneration);
+                Log.buf.Append("Final memory = ");
+                Log.buf.Append(endMem);
+                Log.buf.Append("  (counts = ");
+                Log.buf.Append(endCount);
+                Log.buf.AppendLine(")");
             }
-            else
-                Log.buf.AppendLine("Can't find test file");
-
-            Log.buf.Append("MemGraph Test(");
-            Log.buf.Append(NumBlocks);
-            Log.buf.Append(", ");
-            Log.buf.Append(BlockSize);
-            Log.buf.AppendLine(")");
-
-            long startMem = GC.GetTotalMemory(false);
-            int startCount = GC.CollectionCount(GC.MaxGeneration);
-
-            Log.buf.Append("Initial memory = ");
-            Log.buf.Append(startMem);
-            Log.buf.Append("  (counts = ");
-            Log.buf.Append(startCount);
-            Log.buf.AppendLine(")");
-
-            long lastMem = startMem;
-            byte[] block;
-            for (int i = 0; i < NumBlocks; i++)
+            catch(Exception exp)
             {
-                // Allocate a block
-                block = new byte[BlockSize];
-
-                // If a GC has run then abort
-                int curCount = GC.CollectionCount(GC.MaxGeneration);
-                if (curCount != startCount)
-                {
-                    Log.buf.AppendLine("GC has run, aborting");
-                    break;
-                }
-
-                long curMem = GC.GetTotalMemory(false);
-                if (curMem != lastMem)
-                {
-                    Log.buf.Append("Block ");
-                    Log.buf.Append(i);
-                    Log.buf.Append(" increase = ");
-                    Log.buf.Append(curMem - lastMem);
-                    Log.buf.AppendLine("");
-
-                    lastMem = curMem;
-                }
+                Log.buf.AppendLine("Exception caught: " + exp.ToString());
             }
-
-            long endMem = GC.GetTotalMemory(false);
-            int endCount = GC.CollectionCount(GC.MaxGeneration);
-            Log.buf.Append("Final memory = ");
-            Log.buf.Append(endMem);
-            Log.buf.Append("  (counts = ");
-            Log.buf.Append(endCount);
-            Log.buf.AppendLine(")");
-
             Log.Flush();
         }
 
