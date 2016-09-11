@@ -24,6 +24,7 @@ using System;
 using System.Diagnostics;
 using System.Text;
 using UnityEngine;
+using KSP;
 using KSP.IO;
 
 namespace MemGraph
@@ -95,6 +96,15 @@ namespace MemGraph
 
         bool fullUpdate = true;     // Flag to force re-render of entire texture (e.g. when changing scale)
 
+        bool startVisible = true;
+        bool applyPadding = false;
+
+        KeyCode keyToggleWindow;
+        KeyCode keyScaleUp;
+        KeyCode keyScaleDown;
+        KeyCode keyRunTests;
+        KeyCode keyPadHeap;
+
         int scaleIndex = 4;         // Index of the current vertical scale
         static double[] valCycle;
         static string[] valCycleStr;
@@ -162,7 +172,14 @@ namespace MemGraph
             for (int j = 0; j < GraphWidth; j++)
                 values[j] = 0;
 
+            ReadSettings();
+            showUI = startVisible;
+            if (applyPadding)
+                padHeap.Pad();
+
             UpdateGuiStr();
+
+            GameEvents.onLevelWasLoaded.Add(HandleLevelWasLoaded);
 
             lastColCount = GC.CollectionCount(GC.MaxGeneration);
             lastAlloc = GC.GetTotalMemory(false);
@@ -173,6 +190,57 @@ namespace MemGraph
 
             // Force a full update of the graph texture
             fullUpdate = true;
+        }
+
+        void HandleLevelWasLoaded(GameScenes scene)
+        {
+            ReadSettings();
+        }
+
+        void ReadSettings()
+        {
+            const string settingsFile = "settings.cfg";
+
+            if (File.Exists<Graph>(settingsFile))
+            {
+                String[] lines = File.ReadAllLines<Graph>(settingsFile);
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    String[] line = lines[i].Split('=');
+                    if (line.Length == 2)
+                    {
+                        String key = line[0].Trim();
+                        String val = line[1].Trim();
+                        if (key == "visible")
+                            ReadBool(val, ref startVisible);
+                        else if (key == "applyPadding")
+                            ReadBool(val, ref applyPadding);
+                        else if (key == "keyToggleWindow")
+                            ReadKeyCode(val, ref keyToggleWindow, KeyCode.KeypadMultiply);
+                        else if (key == "keyScaleUp")
+                            ReadKeyCode(val, ref keyScaleUp, KeyCode.KeypadPlus);
+                        else if (key == "keyScaleDown")
+                            ReadKeyCode(val, ref keyScaleDown, KeyCode.KeypadMinus);
+                        else if (key == "keyRunTests")
+                            ReadKeyCode(val, ref keyRunTests, KeyCode.KeypadDivide);
+                        else if (key == "keyPadHeap")
+                            ReadKeyCode(val, ref keyPadHeap, KeyCode.End);
+                        else
+                        {
+                            Log.buf.Append("Ignoring invalid key in settings: '");
+                            Log.buf.Append(lines[i]);
+                            Log.buf.AppendLine("'");
+                        }
+                    }
+                    else
+                    {
+                        Log.buf.Append("Ignoring invalid line in settings: '");
+                        Log.buf.Append(lines[i]);
+                        Log.buf.AppendLine("'");
+                    }
+                }
+            }
         }
 
         void AddMemoryIncrement()
@@ -227,7 +295,8 @@ namespace MemGraph
 
                 // Increament the current value index and force full update if we have caught up with the rendering
                 valIndex = (valIndex + 1) % GraphWidth;
-                fullUpdate = (valIndex == lastRendered);
+                if (valIndex == lastRendered)
+                    fullUpdate = true;
             }
         }
 
@@ -269,26 +338,26 @@ namespace MemGraph
 
             if (GameSettings.MODIFIER_KEY.GetKey())
             {
-                if (Input.GetKeyDown(KeyCode.End))
+                if (Input.GetKeyDown(keyPadHeap))
                 {
                     padHeap.Pad();
                 }
-                if (Input.GetKeyDown(KeyCode.KeypadDivide))
+                if (Input.GetKeyDown(keyRunTests))
                 {
                     RunTestCode();
                 }
-                if (Input.GetKeyDown(KeyCode.KeypadMultiply))
+                if (Input.GetKeyDown(keyToggleWindow))
                 {
                     showUI = !showUI;
                 }
-                if (Input.GetKeyDown(KeyCode.KeypadPlus))
+                if (Input.GetKeyDown(keyScaleUp))
                 {
                     // Increase scale
                     scaleIndex = (scaleIndex + 1) % numScales;
                     UpdateGuiStr();
                     fullUpdate = true;
                 }
-                if (Input.GetKeyDown(KeyCode.KeypadMinus))
+                if (Input.GetKeyDown(keyScaleDown))
                 {
                     // Decrease scale
                     scaleIndex = (scaleIndex + numScales - 1) % numScales;
@@ -485,9 +554,18 @@ namespace MemGraph
             }
             catch(Exception exp)
             {
-                Log.buf.AppendLine("Exception caught: " + exp.ToString());
+                Log.buf.Append("Exception caught: ");
+                Log.buf.AppendLine(exp.ToString());
             }
             Log.Flush();
+        }
+
+        void ReadBool(String val, ref bool variable)
+        {
+            if (val == "true")
+                variable = true;
+            else if (val == "false")
+                variable = false;
         }
 
         void ReadInt32(String str, ref Int32 variable)
@@ -495,6 +573,23 @@ namespace MemGraph
             Int32 value = 0;
             if (Int32.TryParse(str, out value))
                 variable = value;
+        }
+
+        void ReadKeyCode(String str, ref KeyCode variable, KeyCode defValue)
+        {
+            try
+            {
+                variable = (KeyCode)Enum.Parse(typeof(KeyCode), str, false);
+                Log.buf.Append("Read value of:");
+                Log.buf.AppendLine("" + variable);
+            }
+            catch (Exception exp)
+            {
+                Log.buf.Append("Unrecognised KeyCode: ");
+                Log.buf.AppendLine(str);
+                Log.buf.AppendLine(exp.ToString());
+                variable = defValue;
+            }
         }
 
         void Trace(String message)
