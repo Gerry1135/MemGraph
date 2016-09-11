@@ -55,6 +55,7 @@ namespace MemGraph
         LogMsg Log = new LogMsg();
 
         int[] lengths = new int[] { 8, 16, 24, 32, 40, 48, 64, 80, 96, 112, 144, 176, 208, 240, 296, 352, 432, 664, 800, 1008, 1344, 2032 };
+        int[] weights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
         int[] counts = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
         object[][] heads = new object[][] { null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null };
 
@@ -111,30 +112,44 @@ namespace MemGraph
         void UpdateFromConfig()
         {
             for (int i = 0; i < counts.Length; i++)
+            {
+                weights[i] = 0;
                 counts[i] = 0;
+            }
+
+            int totalWeight = 0;
 
             if (File.Exists<Graph>(configFilename))
             {
                 String[] lines = File.ReadAllLines<Graph>(configFilename);
+                String[] line;
 
-                for (int i = 0; i < lines.Length; i++)
+                for (int i = 0; i < weights.Length; i++)
                 {
-                    String[] line = lines[i].Split(':');
+                    line = lines[i].Split(':');
                     if (line.Length == 2)
                     {
                         String val = line[1].Trim();
-                        ReadInt32(val, ref counts[i]);
-                        //Log.buf.Append("counts[");
-                        //Log.buf.Append(i);
-                        //Log.buf.Append("] = ");
-                        //Log.buf.Append(counts[i]);
-                        //Log.buf.AppendLine("");
+                        ReadInt32(val, ref weights[i]);
+                        totalWeight += weights[i];
                     }
                     else
                     {
                         Log.buf.Append("Ignoring invalid line in padheap.cfg: '");
                         Log.buf.Append(lines[i]);
                         Log.buf.AppendLine("'");
+                    }
+                }
+
+                int sizeMegs = 0;
+                line = lines[weights.Length].Split(':');
+                ReadInt32(line[1].Trim(), ref sizeMegs);
+                if (sizeMegs > 0)
+                {
+                    int totalPages = sizeMegs * 256;    // 256 4k pages per meg
+                    for (int i = 0; i < counts.Length; i++)
+                    {
+                        counts[i] = (weights[i] * totalPages) / totalWeight;
                     }
                 }
             }
@@ -150,10 +165,9 @@ namespace MemGraph
             Log.buf.AppendLine("");
 
             long lastMem = GC.GetTotalMemory(false);
-            long numPads = 0;
             Item8 temp;
             Item8 test;
-            while (numPads < count)
+            while (count > 0)
             {
                 // Allocate a block
                 test = new Item8();
@@ -161,21 +175,15 @@ namespace MemGraph
                 long curMem = GC.GetTotalMemory(false);
                 if (curMem == lastMem + 4096)
                 {
-                    //Log.buf.Append("Adding block to keep list, num = ");
-                    //Log.buf.Append(numPads);
-                    //Log.buf.AppendLine("");
-
                     // Add the block to the keep list
                     test.next = head8;
                     head8 = test;
+                    count--;
                 }
                 else
                 {
                     // Store the block temporarily so the next new doesn't reuse it
                     temp = test;
-
-                    if (head8 != null)
-                        numPads++;
                 }
 
                 lastMem = curMem;
@@ -190,10 +198,9 @@ namespace MemGraph
             Log.buf.AppendLine("");
 
             long lastMem = GC.GetTotalMemory(false);
-            long numPads = 0;
             Item16 temp;
             Item16 test;
-            while (numPads < count)
+            while (count > 0)
             {
                 // Allocate a block
                 test = new Item16();
@@ -201,21 +208,15 @@ namespace MemGraph
                 long curMem = GC.GetTotalMemory(false);
                 if (curMem == lastMem + 4096)
                 {
-                    //Log.buf.Append("Adding block to keep list, num = ");
-                    //Log.buf.Append(numPads);
-                    //Log.buf.AppendLine("");
-
                     // Add the block to the keep list
                     test.next = head16;
                     head16 = test;
+                    count--;
                 }
                 else
                 {
                     // Store the block temporarily so the next new doesn't reuse it
                     temp = test;
-
-                    if (head16 != null)
-                        numPads++;
                 }
 
                 lastMem = curMem;
@@ -230,10 +231,9 @@ namespace MemGraph
             Log.buf.AppendLine("");
 
             long lastMem = GC.GetTotalMemory(false);
-            long numPads = 0;
             Item24 temp;
             Item24 test;
-            while (numPads < count)
+            while (count > 0)
             {
                 // Allocate a block
                 test = new Item24();
@@ -241,21 +241,15 @@ namespace MemGraph
                 long curMem = GC.GetTotalMemory(false);
                 if (curMem == lastMem + 4096)
                 {
-                    //Log.buf.Append("Adding block to keep list, num = ");
-                    //Log.buf.Append(numPads);
-                    //Log.buf.AppendLine("");
-
                     // Add the block to the keep list
                     test.next = head24;
                     head24 = test;
+                    count--;
                 }
                 else
                 {
                     // Store the block temporarily so the next new doesn't reuse it
                     temp = test;
-
-                    if (head24 != null)
-                        numPads++;
                 }
 
                 lastMem = curMem;
@@ -275,10 +269,9 @@ namespace MemGraph
             Log.buf.AppendLine("");
 
             long lastMem = GC.GetTotalMemory(false);
-            long numPads = 0;
             object[] temp;
             object[] test;
-            while (numPads < count)
+            while (count > 0)
             {
                 // Allocate a block
                 test = new object[refCount];
@@ -286,21 +279,15 @@ namespace MemGraph
                 long curMem = GC.GetTotalMemory(false);
                 if (curMem == lastMem + 4096)
                 {
-                    //Log.buf.Append("Adding block to keep list, num = ");
-                    //Log.buf.Append(numPads);
-                    //Log.buf.AppendLine("");
-
                     // Add the block to the keep list
                     test[0] = heads[index];
                     heads[index] = test;
+                    count--;
                 }
                 else
                 {
                     // Store the block temporarily so the next new doesn't reuse it
                     temp = test;
-
-                    if (heads[index] != null)
-                        numPads++;
                 }
 
                 lastMem = curMem;
