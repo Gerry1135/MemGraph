@@ -174,8 +174,6 @@ namespace MemGraph
 
             ReadSettings();
             showUI = startVisible;
-            if (applyPadding)
-                padHeap.Pad();
 
             UpdateGuiStr();
 
@@ -190,6 +188,12 @@ namespace MemGraph
 
             // Force a full update of the graph texture
             fullUpdate = true;
+        }
+
+        void Start()
+        {
+            if (applyPadding)
+                padHeap.Pad();
         }
 
         void HandleLevelWasLoaded(GameScenes scene)
