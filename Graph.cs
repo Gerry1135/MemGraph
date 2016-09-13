@@ -136,7 +136,7 @@ namespace MemGraph
             instance = this;
 
             windowId = Guid.NewGuid().GetHashCode();
-            windowTitle = "MemGraph 1.1.0.0";
+            windowTitle = "MemGraph 1.1.0.1";
 
             strBuild = new StringBuilder(128);
             Log = new LogMsg();
@@ -174,8 +174,6 @@ namespace MemGraph
 
             ReadSettings();
             showUI = startVisible;
-            if (applyPadding)
-                padHeap.Pad();
 
             UpdateGuiStr();
 
@@ -190,6 +188,12 @@ namespace MemGraph
 
             // Force a full update of the graph texture
             fullUpdate = true;
+        }
+
+        void Start()
+        {
+            if (applyPadding)
+                padHeap.Pad();
         }
 
         void HandleLevelWasLoaded(GameScenes scene)
