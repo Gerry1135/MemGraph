@@ -29,7 +29,7 @@ Mod-End activates the heap padding.  The amount of padding is controlled by the 
 of the file is very simple.  Each line controls the number of padding blocks allocated of each size.  The first value is the 
 size of each block allocated and the second is the number of blocks.  The first values are only present for illustration, 
 they don't actually control the size of the blocks, these are hardwired to the sizes in the default configuration.  The 
-default configuration allocates around 900 MB of padding.
+default configuration allocates around 1024 MB of padding.
 
 I recommend that you run the game normally and load up a situation that has noticeable stutter.  Display the graph, setting 
 the scale so the regular allocation rate fits nicely and the garbage collection red lines can be seen.  Let it run for several 
@@ -40,7 +40,7 @@ would be very helpful along with details about your setup (and preferably, an ou
 Tig for the testing and very well presented data he provided.
 
 One other thing I should add, though it should be obvious with only a little thought, is that the heap padding mechanism is 
-only intended for 64 bit versions of the game.  Trying to allocate 900 MB of extra heap space on the 32 bit version is unlikely 
+only intended for 64 bit versions of the game.  Trying to allocate 1024 MB of extra heap space on the 32 bit version is unlikely 
 to be successful and, if it is, then it will probably cause the game to crash before long due to running out of address space. 
 It is also unlikely to work effectively if your machine has only 4GB of RAM as the total usage of KSP is likely to grow close 
 to 4GB even without loading a save, resulting in virtual memory paging which will seriously hurt performance.
