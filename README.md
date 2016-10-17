@@ -1,11 +1,13 @@
 # MemGraph
 Copyright (c) 2016 Gerry Iles (Padishar)
 
-This is a simple plugin to display of graph of memory allocation and garbage collection.  It is intended as a troubleshooting 
-and development aid rather than for general use.
+This started as a simple plugin that displays a graph of the Mono heap allocation rate and garbage collection, mainly intended 
+as a troubleshooting and development aid rather than for general use.  However, I have since devised a way to force Mono to keep 
+significantly more free space in the heap, which can significantly reduce the frequency at which the heap fills up and the Mono 
+garbage collection causes a stutter, so I have added it to this mod.
 
 ## Installation
-Copy the DLL from the zip file into the GameData folder of your KSP installation.
+Copy the MemGraph folder from the zip file into the GameData folder of your KSP installation.
 
 ## Usage
 Mod-KeypadMultiply toggles the display of the window.  
