@@ -1,11 +1,13 @@
 # MemGraph
 Copyright (c) 2016 Gerry Iles (Padishar)
 
-This is a simple plugin to display of graph of memory allocation and garbage collection.  It is intended as a troubleshooting 
-and development aid rather than for general use.
+This started as a simple plugin that displays a graph of the Mono heap allocation rate and garbage collection, mainly intended 
+as a troubleshooting and development aid rather than for general use.  However, I have since devised a way to force Mono to keep 
+significantly more free space in the heap, which can significantly reduce the frequency at which the heap fills up and the Mono 
+garbage collection causes a stutter, so I have added it to this mod.
 
 ## Installation
-Copy the DLL from the zip file into the GameData folder of your KSP installation.
+Copy the MemGraph folder from the zip file into the GameData folder of your KSP installation.
 
 ## Usage
 Mod-KeypadMultiply toggles the display of the window.  
@@ -29,7 +31,7 @@ Mod-End activates the heap padding.  The amount of padding is controlled by the 
 of the file is very simple.  Each line controls the number of padding blocks allocated of each size.  The first value is the 
 size of each block allocated and the second is the number of blocks.  The first values are only present for illustration, 
 they don't actually control the size of the blocks, these are hardwired to the sizes in the default configuration.  The 
-default configuration allocates around 900 MB of padding.
+default configuration allocates around 1024 MB of padding.
 
 I recommend that you run the game normally and load up a situation that has noticeable stutter.  Display the graph, setting 
 the scale so the regular allocation rate fits nicely and the garbage collection red lines can be seen.  Let it run for several 
@@ -40,7 +42,7 @@ would be very helpful along with details about your setup (and preferably, an ou
 Tig for the testing and very well presented data he provided.
 
 One other thing I should add, though it should be obvious with only a little thought, is that the heap padding mechanism is 
-only intended for 64 bit versions of the game.  Trying to allocate 900 MB of extra heap space on the 32 bit version is unlikely 
+only intended for 64 bit versions of the game.  Trying to allocate 1024 MB of extra heap space on the 32 bit version is unlikely 
 to be successful and, if it is, then it will probably cause the game to crash before long due to running out of address space. 
 It is also unlikely to work effectively if your machine has only 4GB of RAM as the total usage of KSP is likely to grow close 
 to 4GB even without loading a save, resulting in virtual memory paging which will seriously hurt performance.

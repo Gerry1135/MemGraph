@@ -136,7 +136,7 @@ namespace MemGraph
             instance = this;
 
             windowId = Guid.NewGuid().GetHashCode();
-            windowTitle = "MemGraph 1.1.0.1";
+            windowTitle = "MemGraph 1.1.0.2";
 
             strBuild = new StringBuilder(128);
             Log = new LogMsg();
