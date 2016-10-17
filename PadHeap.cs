@@ -69,6 +69,7 @@ namespace MemGraph
                 Log.buf.Append("Pad started, memory = ");
                 Log.buf.Append((curMem / 1024));
                 Log.buf.AppendLine(" KB");
+                //Log.Flush();
 
                 head8 = null;
                 head16 = null;
@@ -81,6 +82,7 @@ namespace MemGraph
                 Log.buf.Append("After disard and collect, memory = ");
                 Log.buf.Append((curMem / 1024));
                 Log.buf.AppendLine(" KB");
+                //Log.Flush();
 
                 // Do the small sizes with custom classes
                 Pad8();
@@ -95,12 +97,14 @@ namespace MemGraph
                 Log.buf.Append("After padding, memory = ");
                 Log.buf.Append((curMem / 1024));
                 Log.buf.AppendLine(" KB");
+                //Log.Flush();
 
                 GC.Collect();
                 curMem = GC.GetTotalMemory(false);
                 Log.buf.Append("After final collect, memory = ");
                 Log.buf.Append((curMem / 1024));
                 Log.buf.AppendLine(" KB");
+                //Log.Flush();
             }
             catch (Exception e)
             {
@@ -155,6 +159,8 @@ namespace MemGraph
             }
             else
                 Log.buf.AppendLine("Can't find padheap.cfg");
+
+            //Log.Flush();
         }
 
         void Pad8()
@@ -163,9 +169,10 @@ namespace MemGraph
             Log.buf.Append("Pad(8): ");
             Log.buf.Append(count);
             Log.buf.AppendLine("");
+            //Log.Flush();
 
             long lastMem = GC.GetTotalMemory(false);
-            Item8 temp;
+            Item8 temp = null;
             Item8 test;
             while (count > 0)
             {
@@ -182,7 +189,8 @@ namespace MemGraph
                 }
                 else
                 {
-                    // Store the block temporarily so the next new doesn't reuse it
+                    // Store the block in the temp list
+                    test.next = temp;
                     temp = test;
                 }
 
@@ -196,9 +204,10 @@ namespace MemGraph
             Log.buf.Append("Pad(16): ");
             Log.buf.Append(count);
             Log.buf.AppendLine("");
+            //Log.Flush();
 
             long lastMem = GC.GetTotalMemory(false);
-            Item16 temp;
+            Item16 temp = null;
             Item16 test;
             while (count > 0)
             {
@@ -215,7 +224,8 @@ namespace MemGraph
                 }
                 else
                 {
-                    // Store the block temporarily so the next new doesn't reuse it
+                    // Store the block in the temp list
+                    test.next = temp;
                     temp = test;
                 }
 
@@ -229,9 +239,10 @@ namespace MemGraph
             Log.buf.Append("Pad(24): ");
             Log.buf.Append(count);
             Log.buf.AppendLine("");
+            //Log.Flush();
 
             long lastMem = GC.GetTotalMemory(false);
-            Item24 temp;
+            Item24 temp = null;
             Item24 test;
             while (count > 0)
             {
@@ -248,7 +259,8 @@ namespace MemGraph
                 }
                 else
                 {
-                    // Store the block temporarily so the next new doesn't reuse it
+                    // Store the block in the temp list
+                    test.next = temp;
                     temp = test;
                 }
 
@@ -267,9 +279,10 @@ namespace MemGraph
             Log.buf.Append("): ");
             Log.buf.Append(count);
             Log.buf.AppendLine("");
+            //Log.Flush();
 
             long lastMem = GC.GetTotalMemory(false);
-            object[] temp;
+            object[] temp = null;
             object[] test;
             while (count > 0)
             {
@@ -286,7 +299,8 @@ namespace MemGraph
                 }
                 else
                 {
-                    // Store the block temporarily so the next new doesn't reuse it
+                    // Store the block in the temp list
+                    test[0] = temp;
                     temp = test;
                 }
 
