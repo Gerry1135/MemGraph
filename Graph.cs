@@ -131,6 +131,12 @@ namespace MemGraph
 
         void Awake()
         {
+            if (instance != null)
+            {
+                gameObject.DestroyGameObject();
+                return;
+            }
+
             DontDestroyOnLoad(gameObject);
 
             instance = this;
